@@ -1,9 +1,21 @@
 {
   "name": "merge-dirs",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Node module for synchronously and recursively merging multiple folders or collections of files into one folder.",
+  "bin": {
+    "merge-dirs": "bin/merge-dirs.js"
+  },
+  "main": "dist/index.ts",
+  "files": [
+    "bin/merge-dirs.js",
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nooooooom/merge-dirs.git"
+  },
   "scripts": {
+    "build": "tsc -p . & tsc bin/merge-dirs.ts",
     "test": "jest"
   },
   "author": "nooooooom",
@@ -11,6 +23,7 @@
   "devDependencies": {
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.21",
+    "cac": "6.7.9",
     "jest": "^27.5.1",
     "rimraf": "^3.0.2",
     "ts-jest": "^27.1.3",
