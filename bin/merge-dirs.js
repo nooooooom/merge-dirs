@@ -17,7 +17,7 @@ cli
   .option('-i, --ignoreEmptyFolders', `[boolean] keep/omit empty folders`)
   .action((path, dest, options) => {
     mergeDirs({
-      paths: [path],
+      paths: [path].filter(Boolean),
       dest,
       ignoreErrors: options.ignoreErrors,
       ignoreEmptyFolders: options.ignoreEmptyFolders
