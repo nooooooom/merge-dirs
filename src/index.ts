@@ -38,8 +38,14 @@ export interface MergeDirsOptions {
       }
   )[]
 
+  /**
+   * ignore errors when merging and continue with subsequent merges
+   */
   ignoreErrors?: boolean
 
+  /**
+   * ignore empty folders
+   */
   ignoreEmptyFolders?: boolean
 
   /**
