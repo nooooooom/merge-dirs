@@ -79,7 +79,7 @@ test('Ignore empty folders', (done) => {
     ignoreEmptyFolders: true
   })
 
-  if (fs.existsSync(`${dest}/empty`)) {
+  if (fs.existsSync(`${dest}/empty`) || fs.existsSync(`${dest}/a/c`)) {
     return done(new Error('Empty folders should not be copied.'))
   }
 
