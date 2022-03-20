@@ -18,32 +18,36 @@ pnpm install @nooooooom/merge-dirs --save-dev
 import { mergeDirs } from 'merge-dirs'
 
 mergeDirs({
+  // destination path of the merge operation
   dest: string
+
   /**
+   * source paths to merge
+   *
    * @example
    * ```ts
    * // 1. When a folder path is passed in,
    * // all files in the current folder will be merged to dest
    *
-   * // dest: dist
+   * // dest: dest
    * // demo: src/demo/1.ts, src/demo/2.ts
-   * mergeDirs({ dest: 'dist', path: ['src/demo'] })
-   * // dest: dist/1.ts, dist/2.ts
+   * mergeDirs({ dest: 'dest', path: ['src/demo'] })
+   * // dest: dest/1.ts, dest/2.ts
    *
    * // 2. When a file path is passed in, the current file will be merged to dest
    *
-   * // dest: dist
+   * // dest: dest
    * // demo: src/demo/1.ts
-   * mergeDirs({ dest: 'dist', path: ['src/demo/1.ts'] })
-   * // dest: dist/1.ts
+   * mergeDirs({ dest: 'dest', path: ['src/demo/1.ts'] })
+   * // dest: dest/1.ts
    *
    * // 3. If you need to merge a single file under a folder and keep the folder path,
    * // you can use the options
    *
-   * // dest: dist
+   * // dest: dest
    * // demo: src/demo/1.ts, src/demo/2.ts, src/demo2/2.ts
-   * mergeDirs({ dest: 'dist', path: [{ rootDir: 'src', path: 'demo' }] })
-   * // dest: dist/demo/1.ts, dist/demo/2.ts
+   * mergeDirs({ dest: 'dest', path: [{ rootDir: 'src', path: 'demo' }] })
+   * // dest: dest/demo/1.ts, dest/demo/2.ts
    * ```
    */
   paths: (
@@ -56,29 +60,29 @@ mergeDirs({
 
   /**
    * ignore errors when merging and continue with subsequent merges
-   * 
+   *
    * @default false
    */
   ignoreErrors?: boolean
 
   /**
    * ignore empty folders, if true, empty folders will not be merged into dest
-   * 
+   *
    * @default false
    */
   ignoreEmptyFolders?: boolean
 
   /**
    * How to resolve file conflicts, optional with:
-   * 
+   *
    * 'overwrite' | 'skip' | ((source: string, dest: string) => string)
-   * 
-   * If you want to customize the conflict resolver, 
+   *
+   * If you want to customize the conflict resolver,
    * please return the path where the files need to be merged eventually,
    * the valid values are source or dest or any filename in the same directory as dest
-   * 
+   *
    * @default 'overwrite'
-   * 
+   *
    * 'overwrite' | 'skip' | ((source: string, dest: string) => string)
    */
   conflictResolution?: ConflictResolution | ConflictResolver
