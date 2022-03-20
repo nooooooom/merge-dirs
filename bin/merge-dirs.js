@@ -16,6 +16,8 @@ cli
   )
   .option('-i, --ignoreEmptyFolders', `[boolean] keep/omit empty folders`)
   .action((path, dest, options) => {
+    console.log('start merge dirs')
+
     mergeDirs({
       paths: [path].filter(Boolean),
       dest,
