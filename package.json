@@ -1,7 +1,13 @@
 {
   "name": "@nooooooom/merge-dirs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node module for synchronously and recursively merging multiple folders or collections of files into one folder.",
+  "keywords": [
+    "merge",
+    "folder",
+    "directory",
+    "recursive"
+  ],
   "main": "dist/index.ts",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -20,10 +26,10 @@
     "build": "rimraf dist && tsup ./src/index.ts --dts --format esm,cjs",
     "test": "npm run clean && jest",
     "clean": "rimraf __test__/snapshot",
-    "release": "npm run build && npm run publish --no-git-checks"
+    "release": "npm run build && npm publish --no-git-checks && git push"
   },
   "author": "nooooooom",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.21",
