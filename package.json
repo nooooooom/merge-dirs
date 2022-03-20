@@ -12,7 +12,7 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "merge-dirs": "bin/merge-dirs.js"
+    "merge-dirs": "dist/merge-dirs.js"
   },
   "files": [
     "bin",
@@ -23,7 +23,7 @@
     "url": "git+https://github.com/nooooooom/merge-dirs.git"
   },
   "scripts": {
-    "build": "rimraf dist && tsup ./src/index.ts --dts --format esm,cjs",
+    "build": "rimraf dist && tsup ./src/index.ts --dts --format esm,cjs && tsup ./bin/merge-dirs.js",
     "test": "npm run clean && jest",
     "clean": "rimraf __test__/snapshot",
     "release": "npm run build && npm publish --no-git-checks"
