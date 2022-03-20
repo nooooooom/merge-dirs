@@ -16,7 +16,8 @@
   },
   "scripts": {
     "build": "tsc -p . & tsc bin/merge-dirs.ts",
-    "test": "jest"
+    "test": "jest",
+    "clean": "rimraf __test__/snapshot"
   },
   "author": "nooooooom",
   "license": "ISC",

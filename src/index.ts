@@ -61,34 +61,52 @@ const conflictResolvers: Record<ConflictResolution, ConflictResolver> = {
   }
 }
 
+function wrapperCustomResolver(resolver: ConflictResolver): ConflictResolver {
+  return (source, dest) => {
+    const finalDest = resolver(source, dest)
+    if (finalDest !== source && finalDest !== dest) {
+      const destCwd = getCurrentDir(dest)
+      const finalDestCwd = getCurrentDir(finalDest)
+      if (destCwd !== finalDestCwd) {
+        // TODO error
+      }
+      return dest
+    }
+    return finalDest
+  }
+}
+
 function isDirectory(path: string): boolean {
   return fs.lstatSync(path).isDirectory()
 }
 
-function getLastSegmentPath(path: string) {
+function getCurrentDir(path: string) {
+  return path.split('/').slice(0, -1).join('/')
+}
+
+function getFileName(path: string) {
   return path.split('/').slice(-1)[0]
 }
 
 function resolveOptions(options: MergeDirsOptions) {
-  const { dest, paths, conflictResolution } = options
+  const { paths, conflictResolution } = options
   return {
     ...options,
-    dest: dest.endsWith('/') ? dest.replace(/\/*$/, '') : dest,
     paths: paths.map((opt) => {
       if (typeof opt === 'string') {
-        return { rootDir: '', relativePath: '', path: opt }
+        return { rootDir: opt, path: opt, relativePath: '' }
       }
       const { path, rootDir } = opt
-      const file = getLastSegmentPath(path)
+      const file = getFileName(path)
       return {
         rootDir: join(rootDir, path.slice(0, -file.length)),
-        relativePath: file,
-        path: file
+        path: file,
+        relativePath: file
       }
     }),
     conflictResolver:
       typeof conflictResolution === 'function'
-        ? conflictResolution
+        ? wrapperCustomResolver(conflictResolution)
         : conflictResolvers[conflictResolution || 'overwrite']
   }
 }
@@ -97,8 +115,12 @@ export function mergeDirs(options: MergeDirsOptions) {
   const { dest, paths, conflictResolver, ignoreErrors, ignoreEmptyFolders } =
     resolveOptions(options)
 
-  const doCopy = (path: string, relativePath: string, rootDir: string) => {
-    const absolutePath = join(rootDir, relativePath || path)
+  const recursiveMerge = (
+    path: string,
+    rootDir: string,
+    relativePath: string
+  ) => {
+    const absolutePath = join(rootDir, relativePath)
 
     if (isDirectory(absolutePath)) {
       const files = fs.readdirSync(absolutePath)
@@ -106,25 +128,21 @@ export function mergeDirs(options: MergeDirsOptions) {
         return
       }
 
-      if (!rootDir) {
-        // Path passed in as cwd, e.g. { paths: ['/src/demo'] }
-        rootDir = absolutePath
+      if (relativePath) {
+        const distPathRef = join(dest, relativePath)
+        if (!fs.existsSync(distPathRef)) {
+          fs.mkdirSync(distPathRef)
+        }
       }
 
-      const distDirRef = join(
-        dest,
-        relativePath ? relativePath : getLastSegmentPath(path)
+      files.forEach((file) =>
+        recursiveMerge(file, rootDir, join(relativePath, file))
       )
-      if (!fs.existsSync(distDirRef)) {
-        fs.mkdirSync(distDirRef)
-      }
-
-      files.forEach((file) => doCopy(file, join(relativePath, file), rootDir))
     } else if (fs.existsSync(absolutePath)) {
       let distPath = join(
         dest,
         // If there is no relativePath, the current path is an absolute path
-        relativePath ? relativePath : getLastSegmentPath(path)
+        relativePath ? relativePath : getFileName(path)
       )
 
       // resolve conflict
@@ -141,7 +159,9 @@ export function mergeDirs(options: MergeDirsOptions) {
   }
 
   try {
-    paths.forEach((path) => doCopy(path.path, path.relativePath, path.rootDir))
+    paths.forEach((path) =>
+      recursiveMerge(path.path, path.rootDir, path.relativePath)
+    )
   } catch (error) {
     console.error(error)
     if (!ignoreErrors) {

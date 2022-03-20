@@ -1,31 +1,54 @@
 import fs from 'fs'
+import { join } from 'path'
 import { mergeDirs } from '../src'
 
-const rimraf = require('rimraf')
+const snapshotPath = '__test__/snapshot'
 
-const dest = '__test__/snapshot'
+const createSnapshotFolderSync = (name: string) => {
+  const folderPath = join(snapshotPath, name)
 
-const clearSnapshot = () => rimraf.sync(`${dest}/*`)
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath)
+  }
 
-test('Merge files', () => {
+  return folderPath
+}
+
+const createCurrentTestSnapshotFolderSync = () =>
+  createSnapshotFolderSync(expect.getState().currentTestName)
+
+createSnapshotFolderSync('')
+
+test('Merge files', (done) => {
+  const dest = createCurrentTestSnapshotFolderSync()
   mergeDirs({
     dest,
     paths: ['__test__/demo/a/1.ts']
   })
 
-  clearSnapshot()
+  if (!fs.existsSync(`${dest}/1.ts`)) {
+    return done(new Error(''))
+  }
+
+  done()
 })
 
-test('Merge files under a folder', () => {
+test('Merge files under a folder', (done) => {
+  const dest = createCurrentTestSnapshotFolderSync()
   mergeDirs({
     dest,
     paths: ['__test__/demo']
   })
 
-  clearSnapshot()
+  if (fs.existsSync(`${dest}/demo`)) {
+    return done(new Error('Relative path resolution error.'))
+  }
+
+  done()
 })
 
-test('Merge files under a folder and keep the path', () => {
+test('Merge files under a folder and keep the path', (done) => {
+  const dest = createCurrentTestSnapshotFolderSync()
   mergeDirs({
     dest,
     paths: [
@@ -36,10 +59,15 @@ test('Merge files under a folder and keep the path', () => {
     ]
   })
 
-  clearSnapshot()
+  if (!fs.existsSync(`${dest}/demo`)) {
+    return done(new Error('Relative path resolution error.'))
+  }
+
+  done()
 })
 
 test('Ignore empty folders', (done) => {
+  const dest = createCurrentTestSnapshotFolderSync()
   mergeDirs({
     dest,
     paths: [
@@ -54,7 +82,6 @@ test('Ignore empty folders', (done) => {
   if (fs.existsSync(`${dest}/empty`)) {
     return done(new Error('Empty folders should not be copied.'))
   }
-  done()
 
-  clearSnapshot()
+  done()
 })
