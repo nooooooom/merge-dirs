@@ -189,19 +189,19 @@ export function mergeDirs(options: MergeDirsOptions) {
       }
 
       if (destPath !== path) {
-        fs.copyFileSync(path, destPath)
+        try {
+          fs.copyFileSync(path, destPath)
+        } catch (error) {
+          console.error(error)
+          if (!ignoreErrors) {
+            return
+          }
+        }
       }
     }
   }
 
-  try {
-    paths.forEach((path) =>
-      recursiveMerge(path.path, path.rootDir, path.relativePath)
-    )
-  } catch (error) {
-    console.error(error)
-    if (!ignoreErrors) {
-      return
-    }
-  }
+  paths.forEach((path) =>
+    recursiveMerge(path.path, path.rootDir, path.relativePath)
+  )
 }
