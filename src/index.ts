@@ -1,207 +1,79 @@
-import fs from 'fs'
-import { join } from 'path'
+import fs from 'fs-extra'
+import path from 'node:path'
+import { ConflictResolver, MergeDirsOptions, resolveOptions } from './options'
+import { collectMergeTargets } from './utils'
 
-export interface MergeDirsOptions {
-  // destination path of the merge operation
-  dest: string
+export type {
+  ConflictResolution,
+  ConflictResolver,
+  Target,
+  MergeDirsOptions
+} from './options'
 
-  /**
-   * source paths to merge
-   *
-   * @example
-   * ```ts
-   * // 1. When a folder path is passed in,
-   * // all files in the current folder will be merged to dest
-   *
-   * // dest: dest
-   * // demo: src/demo/1.ts, src/demo/2.ts
-   * mergeDirs({ dest: 'dest', path: ['src/demo'] })
-   * // dest: dest/1.ts, dest/2.ts
-   *
-   * // 2. When a file path is passed in, the current file will be merged to dest
-   *
-   * // dest: dest
-   * // demo: src/demo/1.ts
-   * mergeDirs({ dest: 'dest', path: ['src/demo/1.ts'] })
-   * // dest: dest/1.ts
-   *
-   * // 3. If you need to merge a single file under a folder and keep the folder path,
-   * // you can use the options
-   *
-   * // dest: dest
-   * // demo: src/demo/1.ts, src/demo/2.ts, src/demo2/2.ts
-   * mergeDirs({ dest: 'dest', path: [{ rootDir: 'src', path: 'demo' }] })
-   * // dest: dest/demo/1.ts, dest/demo/2.ts
-   * ```
-   */
-  paths: (
-    | string
-    | {
-        rootDir: string
-        path: string
-      }
-  )[]
+export async function mergeDirs(options: MergeDirsOptions) {
+  const { targets, ignoreErrors, ignoreEmptyFolders } = resolveOptions(options)
+  const mergeTargets = collectMergeTargets(targets)
 
-  /**
-   * ignore errors when merging and continue with subsequent merges
-   *
-   * @default false
-   */
-  ignoreErrors?: boolean
-
-  /**
-   * ignore empty folders, if true, empty folders will not be merged into dest
-   *
-   * @default false
-   */
-  ignoreEmptyFolders?: boolean
-
-  /**
-   * How to resolve file conflicts, optional with:
-   *
-   * 'overwrite' | 'skip' | ((source: string, dest: string) => string)
-   *
-   * If you want to customize the conflict resolver,
-   * please return the path where the files need to be merged eventually,
-   * the valid values are source or dest or any filename in the same directory as dest
-   *
-   * @default 'overwrite'
-   *
-   * 'overwrite' | 'skip' | ((source: string, dest: string) => string)
-   */
-  conflictResolution?: ConflictResolution | ConflictResolver
-}
-
-type ConflictResolution = 'overwrite' | 'skip'
-// | 'rename'
-type ConflictResolver = (source: string, dest: string) => string
-
-const conflictResolvers: Record<ConflictResolution, ConflictResolver> = {
-  overwrite: (source, dest) => {
-    return dest
-  },
-  skip: (source, dest) => {
-    return source
-  }
-} as const
-
-function wrapperCustomResolver(resolver: ConflictResolver): ConflictResolver {
-  return (source, dest) => {
-    const finalDest = resolver(source, dest)
-    if (finalDest !== source && finalDest !== dest) {
-      const destCwd = getCurrentDir(dest)
-      const finalDestCwd = getCurrentDir(finalDest)
-      if (destCwd !== finalDestCwd) {
-        // TODO error
-        return dest
-      }
-    }
-    return finalDest
-  }
-}
-
-function isDirectory(path: string) {
-  return fs.lstatSync(path).isDirectory()
-}
-
-function getCurrentDir(path: string) {
-  return path.split('/').slice(0, -1).join('/')
-}
-
-function getFileName(path: string) {
-  return path.split('/').slice(-1)[0]
-}
-
-function resolveOptions(options: MergeDirsOptions) {
-  const { paths, conflictResolution } = options
-  return {
-    ...options,
-    paths: paths.map((opt) => {
-      if (typeof opt === 'string') {
-        return {
-          rootDir: opt,
-          path: opt,
-          // 1. If it is a file, we can copy the file directly without parsing `relativePath`
-          // 2. If it is a directory, the current directory is `rootDir`, and the `relativePath` is ''
-          relativePath: ''
-        }
-      }
-
-      const { path, rootDir } = opt
-      const fileName = getFileName(path)
-
-      return {
-        rootDir: join(rootDir, path.slice(0, -fileName.length)),
-        path: join(rootDir, path),
-        relativePath: fileName
-      }
-    }),
-    conflictResolver:
-      typeof conflictResolution === 'function'
-        ? wrapperCustomResolver(conflictResolution)
-        : conflictResolvers[conflictResolution || 'overwrite']
-  }
-}
-
-export function mergeDirs(options: MergeDirsOptions) {
-  const { dest, paths, conflictResolver, ignoreErrors, ignoreEmptyFolders } =
-    resolveOptions(options)
-
+  let isForceEnd = false
+  const merged = new Set<string>()
   const recursiveMerge = (
-    path: string,
-    rootDir: string,
-    relativePath: string,
-    resolver = conflictResolver
+    dest: string,
+    root: string,
+    src: string,
+    conflictResolver: ConflictResolver
   ) => {
-    if (!fs.existsSync(path)) {
+    if (isForceEnd) return
+
+    const source = path.resolve(root, src)
+    if (merged.has(source)) return
+    if (!fs.existsSync(source)) return
+
+    // TODO: maybe promise
+    const finalPath = conflictResolver(source, dest)
+    if (finalPath === source) {
+      // skip
       return
     }
 
-    if (isDirectory(path)) {
-      const files = fs.readdirSync(path)
+    const stat = fs.statSync(source)
+    if (stat.isDirectory()) {
+      const files = fs.readdirSync(source)
       if (!files.length && ignoreEmptyFolders) {
+        // ignore empty folder
         return
       }
 
-      if (relativePath) {
-        const destPath = join(dest, relativePath)
-        if (!fs.existsSync(destPath)) {
-          fs.mkdirSync(destPath)
-          // If no file with the same name exists in the destination,
-          // just overwrite the entire folder
-          resolver = conflictResolvers.overwrite
-        }
+      if (!fs.existsSync(dest)) {
+        // TODO: support overwrite all directory
+        fs.mkdirSync(dest, {
+          recursive: true
+        })
       }
 
       files.forEach((file) =>
-        recursiveMerge(join(path, file), rootDir, join(relativePath, file))
+        recursiveMerge(
+          path.join(dest, file),
+          root,
+          path.join(src, file),
+          conflictResolver
+        )
       )
-    } else {
-      let destPath = join(
-        dest,
-        // If there is no relativePath, the current path is an absolute path
-        relativePath ? relativePath : getFileName(path)
-      )
-
-      // resolve conflict
-      if (resolver !== conflictResolvers.overwrite && fs.existsSync(destPath)) {
-        destPath = resolver(path, destPath)
-      }
-
-      if (destPath !== path) {
-        try {
-          fs.copyFileSync(path, destPath)
-        } catch (error) {
+    } else if (stat.isFile()) {
+      try {
+        fs.copySync(source, dest)
+        merged.add(source)
+        // TODO: collect success
+      } catch (error) {
+        // TODO: collect error
+        if (!ignoreErrors) {
+          isForceEnd = true
           console.error(error)
-          if (!ignoreErrors) {
-            return
-          }
         }
       }
     }
   }
 
-  paths.forEach((path) =>
-    recursiveMerge(path.path, path.rootDir, path.relativePath)
+  mergeTargets.forEach(({ dest, root, src, conflictResolver }) =>
+    recursiveMerge(dest, root, src, conflictResolver)
   )
 }

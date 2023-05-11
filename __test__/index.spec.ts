@@ -1,87 +1,87 @@
 import fs from 'fs'
 import { join } from 'path'
+import { expect, test } from 'vitest'
 import { mergeDirs } from '../src'
 
-const snapshotPath = '__test__/snapshot'
+const SNAPSHOT_PATH = '__test__/snapshot'
 
-const createSnapshotFolderSync = (name: string) => {
-  const folderPath = join(snapshotPath, name)
-
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath)
-  }
-
-  return folderPath
+const cleanSnapshot = () => {
+  fs.rmSync(SNAPSHOT_PATH, {
+    force: true,
+    recursive: true
+  })
+  fs.mkdirSync(SNAPSHOT_PATH, {
+    recursive: true
+  })
 }
 
-const createCurrentTestSnapshotFolderSync = () =>
-  createSnapshotFolderSync(expect.getState().currentTestName)
-
-createSnapshotFolderSync('')
-
-test('Merge files', (done) => {
-  const dest = createCurrentTestSnapshotFolderSync()
+test('single file', () => {
+  cleanSnapshot()
   mergeDirs({
-    dest,
-    paths: ['__test__/demo/a/1.ts']
-  })
-
-  if (!fs.existsSync(`${dest}/1.ts`)) {
-    return done(new Error(''))
-  }
-
-  done()
-})
-
-test('Merge files under a folder', (done) => {
-  const dest = createCurrentTestSnapshotFolderSync()
-  mergeDirs({
-    dest,
-    paths: ['__test__/demo']
-  })
-
-  if (fs.existsSync(`${dest}/demo`)) {
-    return done(new Error('Relative path resolution error.'))
-  }
-
-  done()
-})
-
-test('Merge files under a folder and keep the path', (done) => {
-  const dest = createCurrentTestSnapshotFolderSync()
-  mergeDirs({
-    dest,
-    paths: [
+    targets: [
       {
-        rootDir: '__test__',
-        path: 'demo'
+        dest: SNAPSHOT_PATH,
+        src: '__test__/fixtures/a/1.ts',
+        flatten: true
       }
     ]
   })
-
-  if (!fs.existsSync(`${dest}/demo`)) {
-    return done(new Error('Relative path resolution error.'))
-  }
-
-  done()
+  expect(fs.existsSync(join(SNAPSHOT_PATH, '1.ts'))).toBeTruthy()
 })
 
-test('Ignore empty folders', (done) => {
-  const dest = createCurrentTestSnapshotFolderSync()
+test('single directory', () => {
+  cleanSnapshot()
   mergeDirs({
-    dest,
-    paths: [
+    targets: [
       {
-        rootDir: '__test__',
-        path: 'demo'
+        dest: SNAPSHOT_PATH,
+        src: '__test__/fixtures/*',
+        flatten: true
       }
-    ],
-    ignoreEmptyFolders: true
+    ]
   })
+  expect(fs.existsSync(join(SNAPSHOT_PATH, 'b/2.ts'))).toBeTruthy()
+})
 
-  if (fs.existsSync(`${dest}/empty`) || fs.existsSync(`${dest}/a/c`)) {
-    return done(new Error('Empty folders should not be copied.'))
-  }
+test('ignore directory', () => {
+  cleanSnapshot()
+  mergeDirs({
+    targets: [
+      {
+        dest: SNAPSHOT_PATH,
+        src: '__test__/fixtures/*',
+        flatten: true,
+        ignore: ['**/b']
+      }
+    ]
+  })
+  expect(fs.existsSync(join(SNAPSHOT_PATH, 'b'))).toBeFalsy()
+})
 
-  done()
+test('specified files', () => {
+  cleanSnapshot()
+  mergeDirs({
+    targets: [
+      {
+        dest: SNAPSHOT_PATH,
+        src: '__test__/fixtures/**/*.ts',
+        flatten: true
+      }
+    ]
+  })
+  expect(fs.existsSync(join(SNAPSHOT_PATH, '1.ts'))).toBeTruthy()
+})
+
+test('specified files with directory', () => {
+  cleanSnapshot()
+  mergeDirs({
+    targets: [
+      {
+        dest: SNAPSHOT_PATH,
+        root: '__test__/fixtures',
+        src: '**/*.ts'
+      }
+    ]
+  })
+  expect(fs.existsSync(join(SNAPSHOT_PATH, 'a/1.ts'))).toBeTruthy()
 })
