@@ -5,7 +5,11 @@ const { mergeDirs } = require('../dist/index')
 const cli = cac('merge-dirs')
 
 cli
-  .command('[path] [dest]', 'merge dirs')
+  .command('[src] [dest]', 'merge dirs')
+  .option(
+    '-r, --root [root]',
+    `['overwrite' | 'skip'] resolve duplicate file conflicts`
+  )
   .option(
     '-c, --conflictResolution [resolution]',
     `['overwrite' | 'skip'] resolve duplicate file conflicts`
@@ -15,12 +19,18 @@ cli
     `[boolean] ignore/not ignore to ignore the error and just execute it`
   )
   .option('-i, --ignoreEmptyFolders', `[boolean] keep/omit empty folders`)
-  .action((path, dest, options) => {
+  .action((src, dest, options) => {
     console.log('start merge dirs')
 
     mergeDirs({
-      paths: [path].filter(Boolean),
-      dest,
+      targets: [
+        {
+          src,
+          dest,
+          root: options.root,
+          conflictResolution: options.conflictResolution
+        }
+      ],
       ignoreErrors: options.ignoreErrors,
       ignoreEmptyFolders: options.ignoreEmptyFolders
     })

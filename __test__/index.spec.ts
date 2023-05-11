@@ -15,9 +15,9 @@ const cleanSnapshot = () => {
   })
 }
 
-test('single file', () => {
+test('single file', async () => {
   cleanSnapshot()
-  mergeDirs({
+  await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
@@ -29,9 +29,9 @@ test('single file', () => {
   expect(fs.existsSync(join(SNAPSHOT_PATH, '1.ts'))).toBeTruthy()
 })
 
-test('single directory', () => {
+test('single directory', async () => {
   cleanSnapshot()
-  mergeDirs({
+  await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
@@ -43,9 +43,9 @@ test('single directory', () => {
   expect(fs.existsSync(join(SNAPSHOT_PATH, 'b/2.ts'))).toBeTruthy()
 })
 
-test('ignore directory', () => {
+test('ignore directory', async () => {
   cleanSnapshot()
-  mergeDirs({
+  await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
@@ -58,9 +58,9 @@ test('ignore directory', () => {
   expect(fs.existsSync(join(SNAPSHOT_PATH, 'b'))).toBeFalsy()
 })
 
-test('specified files', () => {
+test('specified files', async () => {
   cleanSnapshot()
-  mergeDirs({
+  await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
@@ -72,9 +72,9 @@ test('specified files', () => {
   expect(fs.existsSync(join(SNAPSHOT_PATH, '1.ts'))).toBeTruthy()
 })
 
-test('specified files with directory', () => {
+test('specified files with directory', async () => {
   cleanSnapshot()
-  mergeDirs({
+  await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,

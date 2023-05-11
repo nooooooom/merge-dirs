@@ -12,11 +12,11 @@ export type {
 
 export async function mergeDirs(options: MergeDirsOptions) {
   const { targets, ignoreErrors, ignoreEmptyFolders } = resolveOptions(options)
-  const mergeTargets = collectMergeTargets(targets)
+  const mergeTargets = await collectMergeTargets(targets)
 
   let isForceEnd = false
   const merged = new Set<string>()
-  const recursiveMerge = (
+  const recursiveMerge = async (
     dest: string,
     root: string,
     src: string,
@@ -28,8 +28,7 @@ export async function mergeDirs(options: MergeDirsOptions) {
     if (merged.has(source)) return
     if (!fs.existsSync(source)) return
 
-    // TODO: maybe promise
-    const finalPath = conflictResolver(source, dest)
+    const finalPath = await conflictResolver(source, dest)
     if (finalPath === source) {
       // skip
       return
@@ -67,8 +66,8 @@ export async function mergeDirs(options: MergeDirsOptions) {
         // TODO: collect error
         if (!ignoreErrors) {
           isForceEnd = true
-          console.error(error)
         }
+        console.error(error)
       }
     }
   }

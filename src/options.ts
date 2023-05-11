@@ -1,5 +1,8 @@
 export type ConflictResolution = 'overwrite' | 'skip'
-export type ConflictResolver = (src: string, dest: string) => string
+export type ConflictResolver = (
+  src: string,
+  dest: string
+) => string | Promise<string>
 
 export type Target = {
   /**
@@ -7,12 +10,6 @@ export type Target = {
    */
   dest: string
 
-  /**
-   * Project root directory. Can be an absolute path, or a path relative from
-   * the location of the config file itself.
-   *
-   * @default process.cwd()
-   */
   root?: string
 
   /**
@@ -26,6 +23,9 @@ export type Target = {
    */
   ignore?: string[]
 
+  /**
+   * Whether to flatten the matched files.
+   */
   flatten?: boolean
 
   /**

@@ -7,12 +7,12 @@ export interface MergeTarget extends Omit<ResolvedTarget, 'src'> {
   src: string
 }
 
-export const collectMergeTargets = (targets: ResolvedTarget[]) => {
+export const collectMergeTargets = async (targets: ResolvedTarget[]) => {
   const mergeTargets: MergeTarget[] = []
 
   for (const target of targets) {
     const { root, src, dest, ignore, flatten, conflictResolver } = target
-    const matchedPaths = fastglob.sync(src, {
+    const matchedPaths = await fastglob(src, {
       onlyFiles: false,
       dot: true,
       ignore,
@@ -20,7 +20,7 @@ export const collectMergeTargets = (targets: ResolvedTarget[]) => {
     })
 
     for (const matchedPath of matchedPaths) {
-      const srcStat = fs.statSync(path.resolve(root, matchedPath))
+      const srcStat = await fs.stat(path.resolve(root, matchedPath))
       const { base, dir } = path.parse(matchedPath)
       const destDir =
         flatten || (!flatten && !dir)
