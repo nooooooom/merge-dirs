@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'fs-extra'
 import { join } from 'path'
 import { expect, test } from 'vitest'
 import { mergeDirs } from '../src'
@@ -10,37 +10,32 @@ const cleanSnapshot = () => {
     force: true,
     recursive: true
   })
-  fs.mkdirSync(SNAPSHOT_PATH, {
-    recursive: true
-  })
 }
 
-test('single file', async () => {
+test('files', async () => {
   cleanSnapshot()
   await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
-        src: '__test__/fixtures/a/1.ts',
-        flatten: true
+        src: '__test__/fixtures/*/*.ts'
       }
     ]
   })
-  expect(fs.existsSync(join(SNAPSHOT_PATH, '1.ts'))).toBeTruthy()
+  expect((await fs.stat(join(SNAPSHOT_PATH, '1.ts'))).isFile()).toBeTruthy()
 })
 
-test('single directory', async () => {
+test('directories', async () => {
   cleanSnapshot()
   await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
-        src: '__test__/fixtures/*',
-        flatten: true
+        src: '__test__/fixtures/*'
       }
     ]
   })
-  expect(fs.existsSync(join(SNAPSHOT_PATH, 'b/2.ts'))).toBeTruthy()
+  expect((await fs.stat(join(SNAPSHOT_PATH, 'b/2.ts'))).isFile()).toBeTruthy()
 })
 
 test('ignore directory', async () => {
@@ -50,7 +45,6 @@ test('ignore directory', async () => {
       {
         dest: SNAPSHOT_PATH,
         src: '__test__/fixtures/*',
-        flatten: true,
         ignore: ['**/b']
       }
     ]
@@ -64,24 +58,31 @@ test('specified files', async () => {
     targets: [
       {
         dest: SNAPSHOT_PATH,
-        src: '__test__/fixtures/**/*.ts',
-        flatten: true
+        src: '__test__/fixtures/**/*.ts'
       }
     ]
   })
   expect(fs.existsSync(join(SNAPSHOT_PATH, '1.ts'))).toBeTruthy()
 })
 
-test('specified files with directory', async () => {
+test('overwrite directory', async () => {
   cleanSnapshot()
   await mergeDirs({
     targets: [
       {
         dest: SNAPSHOT_PATH,
-        root: '__test__/fixtures',
-        src: '**/*.ts'
+        src: '__test__/fixtures/*'
       }
     ]
   })
-  expect(fs.existsSync(join(SNAPSHOT_PATH, 'a/1.ts'))).toBeTruthy()
+  await mergeDirs({
+    targets: [
+      {
+        dest: SNAPSHOT_PATH,
+        src: '__test__/fixtures1/a',
+        overwriteDirectory: true
+      }
+    ]
+  })
+  expect(fs.existsSync(join(SNAPSHOT_PATH, 'a/1.ts'))).toBeFalsy()
 })
