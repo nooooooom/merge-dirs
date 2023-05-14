@@ -1,6 +1,6 @@
 {
   "name": "@nooooooom/merge-dirs",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": "nooooooom <https://github.com/nooooooom>",
   "description": "Node module for synchronously and recursively merging multiple folders or collections of files into one folder.",
   "keywords": [
