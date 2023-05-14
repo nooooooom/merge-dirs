@@ -15,17 +15,19 @@ export type {
   MergeDirsOptions
 } from './options'
 
-export type MergedType = 'success' | 'error'
-export type MergedCallback = (
-  type: MergedType,
-  source: string,
+export interface MergeParams {
+  source: string
   dest: string
-) => void
+}
+
+export interface MergeDirsResult {
+  successes: MergeParams[]
+  errors: MergeParams[]
+}
 
 export async function mergeDirs(
-  options: MergeDirsOptions,
-  callback?: MergedCallback
-) {
+  options: MergeDirsOptions
+): Promise<MergeDirsResult> {
   const {
     root = process.cwd(),
     targets,
@@ -33,6 +35,9 @@ export async function mergeDirs(
     ignoreEmptyFolders
   } = resolveOptions(options)
   const mergeTargets = await collectMergeTargets(targets, root)
+
+  const successes: MergeParams[] = []
+  const errors: MergeParams[] = []
 
   let isForceEnd = false
   const merged = new Set<string>()
@@ -92,13 +97,19 @@ export async function mergeDirs(
       try {
         fs.copySync(source, dest)
         merged.add(source)
-        callback && callback('success', source, dest)
+        successes.push({
+          source,
+          dest
+        })
       } catch (error) {
-        callback && callback('error', source, dest)
+        errors.push({
+          source,
+          dest
+        })
         if (!ignoreErrors) {
           isForceEnd = true
+          throw new Error(error as any)
         }
-        throw new Error(error as any)
       }
     }
   }
@@ -107,4 +118,9 @@ export async function mergeDirs(
     ({ dest, root, src, conflictResolver, overwriteDirectory }) =>
       recursiveMerge(dest, root, src, conflictResolver, overwriteDirectory)
   )
+
+  return {
+    successes,
+    errors
+  }
 }
