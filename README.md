@@ -14,68 +14,77 @@ pnpm install @nooooooom/merge-dirs --save-dev
 
 ## Usage
 
-```ts
-import { mergeDirs } from 'merge-dirs'
+`merge-dirs` is based on the parsing mode of [`fast-glob`](https://github.com/mrmlnc/fast-glob), which will merge all matched paths into dest.
 
-mergeDirs({
+Consider the directory structure:
+
+```
+|- dest
+   |- bar
+      |- a.ts
+|- foo
+   |- b.ts
+   |- bar
+      |- c.ts
+```
+
+We need to merge `foo` and all files in `bar` into `dest`:
+
+```ts
+await mergeDirs({
   targets: [
     {
-      /**
-       * Destination path of the merge operation.
-       */
       dest: 'dest',
-
-      /**
-       * path or glob
-       */
-      src: 'fixtures/test.ts',
-
-      /**
-       * An array of glob patterns to exclude matches.
-       * This is an alternative way to use negative patterns.
-       */
-      ignore: ['**/node_modules'],
-
-      /**
-       * Whether to flatten the matched files.
-       *
-       * @default false
-       */
-      flatten: false,
-
-      /**
-       * How to resolve file conflicts, optional with:
-       *
-       * 'overwrite' | 'skip' | ((source: string, dest: string) => string)
-       *
-       * If you want to customize the conflict resolver,
-       * please return the path where the files need to be merged eventually,
-       * the valid values are source or dest or any filename in the same directory as dest
-       *
-       * @default 'overwrite'
-       *
-       * 'overwrite' | 'skip' | ((source: string, dest: string) => string)
-       */
-      conflictResolution: 'overwrite'
+      src: ['source/foo/*']
     }
-  ],
-
-  /**
-   * ignore errors when merging and continue with subsequent merges
-   *
-   * @default false
-   */
-  ignoreErrors: false,
-
-  /**
-   * ignore empty folders, if true, empty folders will not be merged into dest
-   *
-   * @default false
-   */
-  ignoreEmptyFolders: false
+  ]
 })
-// -> dest/fixtures/test.ts
 ```
+
+it will become:
+
+```
+|- dest
+   |- bar
+      |- a.ts
+      |- c.ts
+   |- b.ts
+|- foo
+   |- b.ts
+   |- bar
+      |- c.ts
+```
+
+The expectation of `merge-dirs` is to merge all files and folders recursively, but sometimes you may need to overwrite the entire folder instead of merging the files under the folder, you can use `target.overwriteDirectory`:
+
+```ts
+await mergeDirs({
+  targets: [
+    {
+      dest: 'dest',
+      src: ['source/foo/*'],
+      overwriteDirectory: true
+    }
+  ]
+})
+```
+
+it will become:
+
+```
+|- dest
+   |- bar
+      |- c.ts
+   |- b.ts
+|- foo
+   |- b.ts
+   |- bar
+      |- c.ts
+```
+
+### Options
+
+See [options.ts](https://github.com/nooooooom/merge-dirs/blob/main/src/options.ts#L56).
 
 ## Feature
 

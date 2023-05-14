@@ -18,11 +18,11 @@ test('files', async () => {
     targets: [
       {
         dest: SNAPSHOT_PATH,
-        src: '__test__/fixtures/*/*.ts'
+        src: '__test__/fixtures/**/*.ts'
       }
     ]
   })
-  expect((await fs.stat(join(SNAPSHOT_PATH, '1.ts'))).isFile()).toBeTruthy()
+  expect((await fs.stat(join(SNAPSHOT_PATH, '4.ts'))).isFile()).toBeTruthy()
 })
 
 test('directories', async () => {
