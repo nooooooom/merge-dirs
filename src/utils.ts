@@ -33,7 +33,7 @@ export const collectMergeTargets = async (
       mergeTargets.push({
         root,
         src: matchedPath,
-        dest: path.join(destDir, base),
+        dest: path.resolve(root, destDir, base),
         overwriteDirectory,
         conflictResolver
       })

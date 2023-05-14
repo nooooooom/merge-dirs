@@ -49,67 +49,74 @@ export async function mergeDirs(
     overwriteDirectory?: boolean | OverwriteDirectoryFunc
   ) => {
     if (isForceEnd) return
-
     const source = path.resolve(root, src)
-    if (merged.has(source)) return
-    if (!fs.existsSync(source)) return
+    try {
+      if (merged.has(source)) return
+      if (!fs.existsSync(source)) return
 
-    const finalPath = await conflictResolver(source, dest)
-    if (finalPath === source) {
-      // skip
-      return
-    }
-
-    const stat = fs.statSync(source)
-    if (stat.isDirectory()) {
-      const files = fs.readdirSync(source)
-      // ignore empty folder
-      if (!files.length && ignoreEmptyFolders) {
+      const finalPath = await conflictResolver(source, dest)
+      if (finalPath === source) {
+        // skip
         return
       }
 
-      // overwrite directory
-      if (
-        overwriteDirectory === true ||
-        (typeof overwriteDirectory === 'function' &&
-          overwriteDirectory(source, dest))
-      ) {
-        fs.copySync(source, dest)
-        return
-      }
+      const stat = fs.statSync(source)
+      if (stat.isDirectory()) {
+        const files = fs.readdirSync(source)
+        // ignore empty folder
+        if (!files.length && ignoreEmptyFolders) {
+          return
+        }
 
-      // merge directory
-      if (!fs.existsSync(dest)) {
-        fs.mkdirSync(dest, {
-          recursive: true
-        })
-      }
+        // overwrite directory
+        if (
+          overwriteDirectory === true ||
+          (typeof overwriteDirectory === 'function' &&
+            overwriteDirectory(source, dest))
+        ) {
+          fs.rmSync(dest, {
+            force: true,
+            recursive: true
+          })
+          fs.copySync(source, dest, {
+            recursive: true
+          })
+          return
+        }
 
-      files.forEach((file) =>
-        recursiveMerge(
-          path.join(dest, file),
-          root,
-          path.join(src, file),
-          conflictResolver
+        // merge directory
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, {
+            recursive: true
+          })
+        }
+
+        files.forEach((file) =>
+          recursiveMerge(
+            path.join(dest, file),
+            root,
+            path.join(src, file),
+            conflictResolver
+          )
         )
-      )
-    } else if (stat.isFile()) {
-      try {
-        fs.copySync(source, dest)
+      } else if (stat.isFile()) {
+        fs.copySync(source, dest, {
+          overwrite: true
+        })
         merged.add(source)
         successes.push({
           source,
           dest
         })
-      } catch (error) {
-        errors.push({
-          source,
-          dest
-        })
-        if (!ignoreErrors) {
-          isForceEnd = true
-          throw new Error(error as any)
-        }
+      }
+    } catch (error) {
+      errors.push({
+        source,
+        dest
+      })
+      if (!ignoreErrors) {
+        isForceEnd = true
+        throw new Error(error as any)
       }
     }
   }
