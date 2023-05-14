@@ -49,10 +49,13 @@ export async function mergeDirs(
     overwriteDirectory?: boolean | OverwriteDirectoryFunc
   ) => {
     if (isForceEnd) return
+
     const source = path.resolve(root, src)
+    if (merged.has(source)) return
+    if (!fs.pathExists(source)) return
+
     try {
-      if (merged.has(source)) return
-      if (!fs.existsSync(source)) return
+      const stat = await fs.stat(source)
 
       const finalPath = await conflictResolver(source, dest)
       if (finalPath === source) {
@@ -60,9 +63,8 @@ export async function mergeDirs(
         return
       }
 
-      const stat = fs.statSync(source)
       if (stat.isDirectory()) {
-        const files = fs.readdirSync(source)
+        const files = await fs.readdir(source)
         // ignore empty folder
         if (!files.length && ignoreEmptyFolders) {
           return
@@ -74,33 +76,39 @@ export async function mergeDirs(
           (typeof overwriteDirectory === 'function' &&
             overwriteDirectory(source, dest))
         ) {
-          fs.rmSync(dest, {
+          await fs.rm(dest, {
             force: true,
             recursive: true
           })
-          fs.copySync(source, dest, {
+          await fs.copy(source, dest, {
             recursive: true
           })
           return
         }
 
         // merge directory
-        if (!fs.existsSync(dest)) {
-          fs.mkdirSync(dest, {
+        if (
+          !(await fs.pathExists(dest)) ||
+          !(await fs.stat(dest)).isDirectory()
+        ) {
+          await fs.rm(dest, {
+            force: true,
+            recursive: true
+          })
+          await fs.mkdir(dest, {
             recursive: true
           })
         }
 
-        files.forEach((file) =>
-          recursiveMerge(
+        for (const file of files)
+          await recursiveMerge(
             path.join(dest, file),
             root,
             path.join(src, file),
             conflictResolver
           )
-        )
       } else if (stat.isFile()) {
-        fs.copySync(source, dest, {
+        await fs.copy(source, dest, {
           overwrite: true
         })
         merged.add(source)
@@ -121,10 +129,11 @@ export async function mergeDirs(
     }
   }
 
-  mergeTargets.forEach(
-    ({ dest, root, src, conflictResolver, overwriteDirectory }) =>
-      recursiveMerge(dest, root, src, conflictResolver, overwriteDirectory)
-  )
+  for (const mergeTarget of mergeTargets) {
+    const { dest, root, src, conflictResolver, overwriteDirectory } =
+      mergeTarget
+    await recursiveMerge(dest, root, src, conflictResolver, overwriteDirectory)
+  }
 
   return {
     successes,
