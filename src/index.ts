@@ -1,6 +1,11 @@
 import fs from 'fs-extra'
 import path from 'node:path'
-import { ConflictResolver, MergeDirsOptions, resolveOptions } from './options'
+import {
+  ConflictResolver,
+  MergeDirsOptions,
+  OverwriteDirectoryFunc,
+  resolveOptions
+} from './options'
 import { collectMergeTargets } from './utils'
 
 export type {
@@ -10,9 +15,24 @@ export type {
   MergeDirsOptions
 } from './options'
 
-export async function mergeDirs(options: MergeDirsOptions) {
-  const { targets, ignoreErrors, ignoreEmptyFolders } = resolveOptions(options)
-  const mergeTargets = await collectMergeTargets(targets)
+export type MergedType = 'success' | 'error'
+export type MergedCallback = (
+  type: MergedType,
+  source: string,
+  dest: string
+) => void
+
+export async function mergeDirs(
+  options: MergeDirsOptions,
+  callback?: MergedCallback
+) {
+  const {
+    root = process.cwd(),
+    targets,
+    ignoreErrors,
+    ignoreEmptyFolders
+  } = resolveOptions(options)
+  const mergeTargets = await collectMergeTargets(targets, root)
 
   let isForceEnd = false
   const merged = new Set<string>()
@@ -20,7 +40,8 @@ export async function mergeDirs(options: MergeDirsOptions) {
     dest: string,
     root: string,
     src: string,
-    conflictResolver: ConflictResolver
+    conflictResolver: ConflictResolver,
+    overwriteDirectory?: boolean | OverwriteDirectoryFunc
   ) => {
     if (isForceEnd) return
 
@@ -37,13 +58,23 @@ export async function mergeDirs(options: MergeDirsOptions) {
     const stat = fs.statSync(source)
     if (stat.isDirectory()) {
       const files = fs.readdirSync(source)
+      // ignore empty folder
       if (!files.length && ignoreEmptyFolders) {
-        // ignore empty folder
         return
       }
 
+      // overwrite directory
+      if (
+        overwriteDirectory === true ||
+        (typeof overwriteDirectory === 'function' &&
+          overwriteDirectory(source, dest))
+      ) {
+        fs.copySync(source, dest)
+        return
+      }
+
+      // merge directory
       if (!fs.existsSync(dest)) {
-        // TODO: support overwrite all directory
         fs.mkdirSync(dest, {
           recursive: true
         })
@@ -61,18 +92,19 @@ export async function mergeDirs(options: MergeDirsOptions) {
       try {
         fs.copySync(source, dest)
         merged.add(source)
-        // TODO: collect success
+        callback && callback('success', source, dest)
       } catch (error) {
-        // TODO: collect error
+        callback && callback('error', source, dest)
         if (!ignoreErrors) {
           isForceEnd = true
         }
-        console.error(error)
+        throw new Error(error as any)
       }
     }
   }
 
-  mergeTargets.forEach(({ dest, root, src, conflictResolver }) =>
-    recursiveMerge(dest, root, src, conflictResolver)
+  mergeTargets.forEach(
+    ({ dest, root, src, conflictResolver, overwriteDirectory }) =>
+      recursiveMerge(dest, root, src, conflictResolver, overwriteDirectory)
   )
 }

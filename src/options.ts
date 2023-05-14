@@ -1,16 +1,16 @@
 export type ConflictResolution = 'overwrite' | 'skip'
 export type ConflictResolver = (
-  src: string,
+  source: string,
   dest: string
 ) => string | Promise<string>
+
+export type OverwriteDirectoryFunc = (source: string, dest: string) => boolean
 
 export type Target = {
   /**
    * Destination path of the merge operation.
    */
   dest: string
-
-  root?: string
 
   /**
    * path or glob
@@ -24,9 +24,18 @@ export type Target = {
   ignore?: string[]
 
   /**
-   * Whether to flatten the matched files.
+   * Remove the directory structure.
+   *
+   * @default true
    */
   flatten?: boolean
+
+  /**
+   * Whether to overwrite existing directory.
+   *
+   * @default false
+   */
+  overwriteDirectory?: boolean | OverwriteDirectoryFunc
 
   /**
    * How to resolve file conflicts, optional with:
@@ -45,6 +54,8 @@ export type Target = {
 }
 
 export interface MergeDirsOptions {
+  root?: string
+
   /**
    * Array of targets to merge.
    */
@@ -65,9 +76,7 @@ export interface MergeDirsOptions {
   ignoreEmptyFolders?: boolean
 }
 
-export interface ResolvedTarget
-  extends Omit<Target, 'root' | 'conflictResolution'> {
-  root: string
+export interface ResolvedTarget extends Omit<Target, 'conflictResolution'> {
   conflictResolver: ConflictResolver
 }
 
@@ -89,7 +98,7 @@ export const resolveOptions = (
     targets: options.targets.map((target) => {
       const { conflictResolution = 'overwrite' } = target
       return {
-        root: '',
+        flatten: true,
         ...target,
         conflictResolver:
           typeof conflictResolution === 'function'

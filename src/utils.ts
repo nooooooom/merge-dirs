@@ -1,17 +1,21 @@
-import fs from 'fs-extra'
 import fastglob from 'fast-glob'
 import { ResolvedTarget } from './options'
 import path from 'node:path'
 
 export interface MergeTarget extends Omit<ResolvedTarget, 'src'> {
+  root: string
   src: string
 }
 
-export const collectMergeTargets = async (targets: ResolvedTarget[]) => {
+export const collectMergeTargets = async (
+  targets: ResolvedTarget[],
+  root: string
+) => {
   const mergeTargets: MergeTarget[] = []
 
   for (const target of targets) {
-    const { root, src, dest, ignore, flatten, conflictResolver } = target
+    const { src, dest, ignore, flatten, overwriteDirectory, conflictResolver } =
+      target
     const matchedPaths = await fastglob(src, {
       onlyFiles: false,
       dot: true,
@@ -20,19 +24,17 @@ export const collectMergeTargets = async (targets: ResolvedTarget[]) => {
     })
 
     for (const matchedPath of matchedPaths) {
-      const srcStat = await fs.stat(path.resolve(root, matchedPath))
       const { base, dir } = path.parse(matchedPath)
       const destDir =
         flatten || (!flatten && !dir)
           ? dest
-          : srcStat.isFile()
-          ? path.join(dest, dir)
           : dir.replace(dir.split('/')[0]!, dest)
 
       mergeTargets.push({
         root,
         src: matchedPath,
         dest: path.join(destDir, base),
+        overwriteDirectory,
         conflictResolver
       })
     }
